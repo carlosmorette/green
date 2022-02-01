@@ -1,54 +1,23 @@
 defmodule Green.Board do
+  @pieces ["n", "b", "w"]
+
   def make_board(), do: do_make_board(1, [])
 
   def do_make_board(9, acc), do: acc
 
-  def do_make_board(4 = count, acc) do
-    new_row =
-      1..8
-      |> Enum.map(fn n -> 
-        cond do
-          n == 4 -> 
-            {n, "b"}
-
-          n == 5 ->
-            {n, "w"}
-
-          true ->
-            {n, "n"}
-        end
-      end)
-      |> Kernel.++([count])
-
-    do_make_board(count + 1, acc ++ [new_row])
-  end
-
-  def do_make_board(5 = count, acc) do
-    new_row =
-      1..8
-      |> Enum.map(fn n -> 
-        cond do
-          n == 4 -> 
-            {n, "w"}
-
-          n == 5 ->
-            {n, "b"}
-
-          true ->
-            {n, "n"}
-        end
-      end)
-      |> Kernel.++([count])
-
-    do_make_board(count + 1, acc ++ [new_row])
-  end
-
   def do_make_board(count, acc) do
-    new_row = 
-      1..8
-      |> Enum.map(fn n -> {n, "n"} end)
-      |> Kernel.++([count])
+    do_make_board(count + 1, acc ++ [Enum.map(1..8, fn _ -> "n" end)])
+  end
 
-    do_make_board(count + 1, acc ++ [new_row])
+  def make_random_board(), do: do_make_random_board(1, [])
+
+  def do_make_random_board(9, acc), do: acc
+
+  def do_make_random_board(count, acc) do
+    do_make_random_board(count + 1, acc ++ [Enum.map(1..8, fn _ -> Enum.random(@pieces) end)])
+  end
+
+  def find_neighbors(board, player, {row, column}) do
+    Green.Neighbor.find_all(board, player, {row, column})
   end
 end

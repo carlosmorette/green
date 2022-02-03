@@ -11,6 +11,7 @@ defmodule Green.Neighbor do
       |> get_by_row(row)
       |> get_by_column(column)
       |> filter_valid(player)
+      |> remove_empty()
     end
   end
 
@@ -58,7 +59,15 @@ defmodule Green.Neighbor do
   def do_filter([], _player, acc), do: acc
 
   def do_filter([{position, row} | tail], player, acc) do
-    filtered = Enum.filter(row, fn {_direction, n} -> n != player end)
+    filtered =
+      row
+      |> Enum.filter(fn {_direction, n} -> n != player and n != "n" end)
+      |> Enum.map(fn {direction, _n} -> direction end)
+
     do_filter(tail, player, [{position, filtered} | acc])
+  end
+
+  def remove_empty(neighbors) do
+    Enum.filter(neighbors, fn {_direction, neigh} -> not Enum.empty?(neigh) end)
   end
 end

@@ -17,7 +17,7 @@ defmodule GreenWeb.Router do
   scope "/", GreenWeb do
     pipe_through :browser
 
-    get "/", PageController, :index
+    live "/", GameLive
   end
 
   # Other scopes may use custom stacks.

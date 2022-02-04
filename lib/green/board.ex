@@ -7,6 +7,28 @@ defmodule Green.Board do
 
   def do_make_board(9, acc), do: acc
 
+  def do_make_board(4 = count, acc) do
+    columns =
+      Enum.map(1..8, fn
+        4 -> "b"
+        5 -> "w"
+        _ -> "n"
+      end)
+
+    do_make_board(count + 1, acc ++ [columns])
+  end
+
+  def do_make_board(5 = count, acc) do
+    columns =
+      Enum.map(1..8, fn
+        4 -> "w"
+        5 -> "b"
+        _ -> "n"
+      end)
+
+    do_make_board(count + 1, acc ++ [columns])
+  end
+
   def do_make_board(count, acc) do
     do_make_board(count + 1, acc ++ [Enum.map(1..8, fn _ -> "n" end)])
   end

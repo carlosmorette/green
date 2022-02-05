@@ -30,7 +30,9 @@ defmodule Green.Neighbor do
   end
 
   def rows(0), do: [{:down, 1}, {:same, 0}]
+
   def rows(7), do: [{:up, -1}, {:same, 0}]
+
   def rows(_place_row), do: [{:up, -1}, {:same, 0}, {:down, 1}]
 
   def get_by_column(rows, column), do: do_get_by_column(rows, column, [])
@@ -53,7 +55,9 @@ defmodule Green.Neighbor do
   end
 
   def columns(0), do: [{:right, 1}, {:same, 0}]
+
   def columns(7), do: [{:left, -1}, {:same, 0}]
+
   def columns(_column), do: [{:left, -1}, {:same, 0}, {:right, 1}]
 
   def filter_valid(rows, player), do: do_filter(rows, player, [])

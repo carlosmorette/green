@@ -22,7 +22,7 @@ defmodule GreenWeb.GameLive do
   def render(assigns) do
     ~H"""
     <div class="game-container">
-      <p>Vez de: <%= if @player == "b", do: "black", else: "white"%></p>
+      <p class="turn"><%= if @player == "b", do: "Black", else: "White"%></p>
       <%= for {row, index} <- Enum.with_index(@board) do %>
         <div class="flex">
 
@@ -67,13 +67,13 @@ defmodule GreenWeb.GameLive do
           socket
 
         {:changes, new_board} ->
-          other_player = if socket.assigns.player == "b", do: "w", else: "b"
+          another_player = get_another_player(player)
 
-          case Board.have_movement?(new_board, other_player) do
+          case Board.have_movement?(new_board, another_player) do
             {_result, true} ->
               socket
               |> update(:board, fn _ -> new_board end)
-              |> update(:player, fn _ -> other_player end)
+              |> update(:player, fn _ -> another_player end)
 
             {_result, false} ->
               update(socket, :board, fn _ -> new_board end)
@@ -82,4 +82,8 @@ defmodule GreenWeb.GameLive do
 
     {:noreply, socket}
   end
+
+  def get_another_player("b"), do: "w"
+
+  def get_another_player("w"), do: "b"
 end

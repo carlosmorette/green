@@ -47,12 +47,7 @@ defmodule Green.Board do
         {:same, board}
 
       {result, true} ->
-        {_, {res, new_board}} =
-          result
-          |> Enum.filter(fn {{xrow, xcolumn}, _res} ->
-            xrow == row and xcolumn == column
-          end)
-          |> List.first()
+        [{_, {res, new_board}}] = filter_by_coordinates(result, {row, column})
 
         case res do
           :same ->
@@ -94,30 +89,23 @@ defmodule Green.Board do
   end
 
   def find_neighbors(board, player, {row, column}) do
-    case Green.Neighbor.find_all(board, player, {row, column}) do
-      {:error, :invalid_place} ->
-        {:error, :invalid_place}
-
-      [] ->
-        :empty
-
-      neighbors ->
-        {:ok, neighbors}
-    end
+    board
+    |> Green.Neighbor.find_all(player, {row, column})
+    |> treat_cases()
   end
 
   def traverse_lines(board, neighbors, {main_point, player}) do
     board
     |> do_traverse_lines(neighbors, main_point, [], player)
     |> List.flatten()
-    |> case do
-      [] ->
-        :empty
-
-      pieces ->
-        {:ok, pieces}
-    end
+    |> treat_cases()
   end
+
+  def treat_cases([]), do: :empty
+
+  def treat_cases({:error, error}), do: {:error, error}
+
+  def treat_cases(result), do: {:ok, result}
 
   def do_traverse_lines(_board, [], {_row, _column}, acc, _player_info), do: acc
 
@@ -213,11 +201,15 @@ defmodule Green.Board do
   end
 
   def vertical_movement(:up), do: -1
+
   def vertical_movement(:same), do: 0
+
   def vertical_movement(:down), do: 1
 
   def horizontal_movement(:left), do: -1
+
   def horizontal_movement(:same), do: 0
+
   def horizontal_movement(:right), do: 1
 
   def swap_pieces(new_board, _player, []), do: new_board
@@ -230,5 +222,11 @@ defmodule Green.Board do
 
     new_board = List.replace_at(board, row, new_row)
     swap_pieces(new_board, player, tail)
+  end
+
+  def filter_by_coordinates(result, {trow, tcolumn}) do
+    Enum.filter(result, fn {{row, column}, _res} ->
+      row == trow and column == tcolumn
+    end)
   end
 end

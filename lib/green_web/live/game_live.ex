@@ -1,10 +1,13 @@
 defmodule GreenWeb.GameLive do
   use Phoenix.LiveView
 
+  alias Green.Board
+
   def mount(_params, _session, socket) do
     if connected?(socket) do
       board = Green.Board.make_board()
-      {:ok, assign(socket, board: board)}
+
+      {:ok, assign(socket, board: board, player: "b")}
     else
       {:ok, assign(socket, page: "loading")}
     end
@@ -19,6 +22,7 @@ defmodule GreenWeb.GameLive do
   def render(assigns) do
     ~H"""
     <div class="game-container">
+      <p>Vez de: <%= if @player == "b", do: "black", else: "white"%></p>
       <%= for {row, index} <- Enum.with_index(@board) do %>
         <div class="flex">
 
@@ -48,12 +52,34 @@ defmodule GreenWeb.GameLive do
 
   def render_place(assigns, {{row, column}, "n"}) do
     ~H"""
-    <div class="null" phx-click="put" phx-value-row={row} phx-value-column={column}></div>
+    <div class="null" phx-click="make-play" phx-value-row={row} phx-value-column={column}></div>
     """
   end
 
-  def handle_event("put", %{"row" => row, "column" => column}, socket) do
-    # {row, column} = {String.to_integer(row), String.to_integer(column)}
+  def handle_event("make-play", %{"row" => row, "column" => column}, socket) do
+    {row, column} = {String.to_integer(row), String.to_integer(column)}
+    board = socket.assigns.board
+    player = socket.assigns.player
+
+    socket =
+      case Board.make_moviment(board, player, {row, column}) do
+        {:same, _board} ->
+          socket
+
+        {:changes, new_board} ->
+          other_player = if socket.assigns.player == "b", do: "w", else: "b"
+
+          case Board.have_movement?(new_board, other_player) do
+            {_result, true} ->
+              socket
+              |> update(:board, fn _ -> new_board end)
+              |> update(:player, fn _ -> other_player end)
+
+            {_result, false} ->
+              update(socket, :board, fn _ -> new_board end)
+          end
+      end
+
     {:noreply, socket}
   end
 end

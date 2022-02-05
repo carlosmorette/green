@@ -7,7 +7,7 @@ defmodule Green.Board do
 
   def do_make_board(9, acc), do: acc
 
-  def do_make_board(4 = count, acc) do
+  def do_make_board(5 = count, acc) do
     columns =
       Enum.map(1..8, fn
         4 -> "b"
@@ -18,7 +18,7 @@ defmodule Green.Board do
     do_make_board(count + 1, acc ++ [columns])
   end
 
-  def do_make_board(5 = count, acc) do
+  def do_make_board(4 = count, acc) do
     columns =
       Enum.map(1..8, fn
         4 -> "w"
@@ -41,121 +41,194 @@ defmodule Green.Board do
     do_make_random_board(count + 1, acc ++ [Enum.map(1..8, fn _ -> Enum.random(@pieces) end)])
   end
 
-  def find_neighbors(board, player, {row, column}) do
-    Green.Neighbor.find_all(board, player, {row, column})
+  def make_moviment(board, player, {row, column}) do
+    case have_movement?(board, player) do
+      {_, false} ->
+        {:same, board}
+
+      {result, true} ->
+        {_, {res, new_board}} =
+          result
+          |> Enum.filter(fn {{xrow, xcolumn}, _res} ->
+            xrow == row and xcolumn == column
+          end)
+          |> List.first()
+
+        case res do
+          :same ->
+            {:same, board}
+
+          :changes ->
+            {:changes, new_board}
+        end
+    end
   end
 
-  def traverse_lines(board, neighbors, {main_point, _player} = player_info) do
+  def have_movement?(board, player) do
+    result =
+      board
+      |> Enum.with_index()
+      |> Enum.map(fn {row, index} ->
+        row
+        |> Enum.with_index()
+        |> Enum.reduce([], fn {content, cindex}, acc ->
+          if content == "n", do: [{index, cindex} | acc], else: acc
+        end)
+      end)
+      |> List.flatten()
+      |> Enum.reduce([], fn {row, column}, acc ->
+        [{{row, column}, check_moviment(board, player, {row, column})} | acc]
+      end)
+
+    {result, Enum.any?(result, fn {_, {res, _new_boad}} -> res == :changes end)}
+  end
+
+  def check_moviment(board, player, {row, column}) do
+    with {:ok, neighbors} <- find_neighbors(board, player, {row, column}),
+         {:ok, pieces} <- traverse_lines(board, neighbors, {{row, column}, player}) do
+      {:changes, swap_pieces(board, player, [{row, column} | pieces])}
+    else
+      :empty -> {:same, board}
+      {:error, _error} -> {:error, board}
+    end
+  end
+
+  def find_neighbors(board, player, {row, column}) do
+    case Green.Neighbor.find_all(board, player, {row, column}) do
+      {:error, :invalid_place} ->
+        {:error, :invalid_place}
+
+      [] ->
+        :empty
+
+      neighbors ->
+        {:ok, neighbors}
+    end
+  end
+
+  def traverse_lines(board, neighbors, {main_point, player}) do
     board
-    |> do_traverse_lines(neighbors, main_point, [], player_info)
+    |> do_traverse_lines(neighbors, main_point, [], player)
     |> List.flatten()
+    |> case do
+      [] ->
+        :empty
+
+      pieces ->
+        {:ok, pieces}
+    end
   end
 
   def do_traverse_lines(_board, [], {_row, _column}, acc, _player_info), do: acc
 
   def do_traverse_lines(
         board,
-        [{row_direction, columns_direction} | tail],
+        [{direction, columns_direction} | tail],
         {row, column},
         acc,
-        player_info
+        player
       ) do
     result =
       do_traverse_columns(
         board,
-        row_direction,
+        direction,
         columns_direction,
         {row, column},
-        player_info,
+        player,
         []
       )
 
-    do_traverse_lines(board, tail, {row, column}, [result | acc], player_info)
+    do_traverse_lines(board, tail, {row, column}, [result | acc], player)
   end
 
-  def columns_add_acc(columns_direction) do
-    Enum.map(columns_direction, fn direction -> {direction, []} end)
-  end
-
-  def do_traverse_columns(_board, _row_direction, [], {_row, _column}, _player_info, acc), do: acc
+  def do_traverse_columns(_board, _direction, [], {_row, _column}, _player, acc), do: acc
 
   def do_traverse_columns(
         board,
-        row_direction,
+        direction,
         [column_direction | tail],
         {row, column},
-        player_info,
+        player,
         acc
       ) do
-    result =
-      do_traverse_column(board, row_direction, {column_direction, []}, {row, column}, player_info)
+    result = do_traverse_column(board, direction, {column_direction, []}, {row, column}, player)
 
-    do_traverse_columns(board, row_direction, tail, {row, column}, player_info, [result | acc])
+    do_traverse_columns(board, direction, tail, {row, column}, player, [result | acc])
   end
 
   def do_traverse_column(
         _board,
-        _row_direction,
+        _direction,
         {_column_direction, _acc},
         {row, column},
-        _player_info
+        _player
       )
       when exceeded_limit?(row, column),
       do: []
 
   def do_traverse_column(
         _board,
-        _row_direction,
+        _direction,
         {:stop, acc},
         {_row, _column},
-        _player_info
+        _player
       ),
       do: acc
 
   def do_traverse_column(
         board,
-        row_direction,
+        direction,
         {column_direction, acc},
         {row, column},
-        {_main_point, player} = player_info
+        player
       ) do
-    vertical_movement =
-      case row_direction do
-        :up -> -1
-        :same -> 0
-        :down -> 1
-      end
-
-    horizontal_movement =
-      case column_direction do
-        :left -> -1
-        :same -> 0
-        :right -> 1
-      end
+    vertical_movement = vertical_movement(direction)
+    horizontal_movement = horizontal_movement(column_direction)
 
     result = {row + vertical_movement, column + horizontal_movement}
     {row_place, column_place} = result
 
     place =
-      board
-      |> Enum.at(row_place)
-      |> Enum.at(column_place)
+      case Enum.at(board, row_place) do
+        nil -> nil
+        row -> Enum.at(row, column_place)
+      end
 
     cond do
       place == player ->
-        do_traverse_column(board, row_direction, {:stop, acc}, result, player_info)
+        do_traverse_column(board, direction, {:stop, acc}, result, player)
 
       place == "n" ->
-        do_traverse_column(board, row_direction, {:stop, []}, result, player_info)
+        do_traverse_column(board, direction, {:stop, []}, result, player)
 
       true ->
         do_traverse_column(
           board,
-          row_direction,
+          direction,
           {column_direction, [result | acc]},
           result,
-          player_info
+          player
         )
     end
+  end
+
+  def vertical_movement(:up), do: -1
+  def vertical_movement(:same), do: 0
+  def vertical_movement(:down), do: 1
+
+  def horizontal_movement(:left), do: -1
+  def horizontal_movement(:same), do: 0
+  def horizontal_movement(:right), do: 1
+
+  def swap_pieces(new_board, _player, []), do: new_board
+
+  def swap_pieces(board, player, [{row, column} | tail]) do
+    new_row =
+      board
+      |> Enum.at(row)
+      |> List.replace_at(column, player)
+
+    new_board = List.replace_at(board, row, new_row)
+    swap_pieces(new_board, player, tail)
   end
 end

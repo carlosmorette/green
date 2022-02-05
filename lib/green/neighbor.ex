@@ -12,6 +12,8 @@ defmodule Green.Neighbor do
       |> get_by_column(column)
       |> filter_valid(player)
       |> remove_empty()
+    else
+      {:error, :invalid_place}
     end
   end
 
